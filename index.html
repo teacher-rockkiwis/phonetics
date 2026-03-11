@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>互動音標學習坊</title>
+  
+  <!-- 載入 Tailwind CSS 來處理排版和樣式 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- 載入 Babel 讓瀏覽器可以即時看懂 React JSX 語法 -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-50">
+  
+  <!-- React 應用程式會被渲染在這個 div 裡面 -->
+  <div id="root"></div>
+
+  <!-- React 核心程式碼 -->
+  <script type="text/babel" data-type="module">
+    // 從 esm.sh 載入 React 和 圖示
+    import React, { useState } from 'https://esm.sh/react@18.2.0';
+    import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
+    import { Volume2, Info, Play, Mic2, Upload, CheckCircle2, Server } from 'https://esm.sh/lucide-react@0.292.0';
+
+    // 音標資料庫
+    const phoneticData = {
+      vowels: [
+        { symbol: 'i', type: '長母音', example: 'see', trans: '/si/', desc: '嘴角微向兩側拉開，發音長而清晰', teachSound: 'ee' },
+        { symbol: 'ɪ', type: '短母音', example: 'sit', trans: '/sɪt/', desc: '下巴微降，發音短促、肌肉放鬆', teachSound: 'ih' },
+        { symbol: 'e', type: '雙母音', example: 'say', trans: '/se/', desc: '先發 /ɛ/ 再滑向 /ɪ/', teachSound: 'ay' },
+        { symbol: 'ɛ', type: '短母音', example: 'bed', trans: '/bɛd/', desc: '嘴巴微開，舌頭平放', teachSound: 'eh' },
+        { symbol: 'æ', type: '短母音', example: 'cat', trans: '/kæt/', desc: '嘴巴張大(約兩指寬)，下巴往下', teachSound: 'ah' },
+        { symbol: 'ɑ', type: '短母音', example: 'hot', trans: '/hɑt/', desc: '嘴巴張大，發出類似「阿」的音', teachSound: 'ah' },
+        { symbol: 'u', type: '長母音', example: 'too', trans: '/tu/', desc: '嘴唇圓突，發音長而清晰', teachSound: 'oo' },
+        { symbol: 'ʊ', type: '短母音', example: 'book', trans: '/bʊk/', desc: '嘴唇微圓，發音短促放鬆', teachSound: 'uh' },
+        { symbol: 'ʌ', type: '短母音', example: 'cup', trans: '/kʌp/', desc: '嘴巴微張，短促有力', teachSound: 'uh' },
+        { symbol: 'ə', type: '短母音', example: 'about', trans: '/əˈbaʊt/', desc: '最放鬆的母音，輕音節常見', teachSound: 'uh' },
+        { symbol: 'aɪ', type: '雙母音', example: 'five', trans: '/faɪv/', desc: '由 /a/ 滑向 /ɪ/', teachSound: 'eye' },
+        { symbol: 'aʊ', type: '雙母音', example: 'now', trans: '/naʊ/', desc: '由 /a/ 滑向 /ʊ/', teachSound: 'ow' },
+        { symbol: 'ɝ', type: '捲舌母音', example: 'bird', trans: '/bɝd/', desc: '舌尖往上捲起，發音用力、通常出現在重音節', teachSound: 'err' },
+        { symbol: 'ɚ', type: '捲舌母音', example: 'teacher', trans: '/ˈtitʃɚ/', desc: '發音同 /ɝ/ 但較輕快放鬆，只出現在輕音節', teachSound: 'er' },
+      ],
+      consonants: [
+        { symbol: 'p', type: '無聲子音', example: 'pen', trans: '/pɛn/', desc: '雙唇緊閉後爆開，不震動聲帶', teachSound: 'puh' },
+        { symbol: 'b', type: '有聲子音', example: 'boy', trans: '/bɔɪ/', desc: '雙唇緊閉後爆開，震動聲帶', teachSound: 'buh' },
+        { symbol: 't', type: '無聲子音', example: 'ten', trans: '/tɛn/', desc: '舌尖抵上齒齦後爆開', teachSound: 'tuh' },
+        { symbol: 'd', type: '有聲子音', example: 'dog', trans: '/dɔg/', desc: '舌尖抵上齒齦後爆開，震動聲帶', teachSound: 'duh' },
+        { symbol: 'k', type: '無聲子音', example: 'cat', trans: '/kæt/', desc: '舌根抵軟顎後爆開', teachSound: 'kuh' },
+        { symbol: 'g', type: '有聲子音', example: 'go', trans: '/go/', desc: '舌根抵軟顎後爆開，震動聲帶', teachSound: 'guh' },
+        { symbol: 'f', type: '無聲子音', example: 'five', trans: '/faɪv/', desc: '上齒輕咬下唇，吹氣', teachSound: 'ff' },
+        { symbol: 'v', type: '有聲子音', example: 'van', trans: '/væn/', desc: '上齒輕咬下唇，吹氣且震動聲帶', teachSound: 'vv' },
+        { symbol: 'θ', type: '無聲子音', example: 'think', trans: '/θɪŋk/', desc: '舌尖輕咬於上下齒間吹氣', teachSound: 'thuh' },
+        { symbol: 'ð', type: '有聲子音', example: 'this', trans: '/ðɪs/', desc: '舌尖輕咬於上下齒間震動聲帶', teachSound: 'the' },
+        { symbol: 's', type: '無聲子音', example: 'see', trans: '/si/', desc: '上下齒靠近，舌尖靠近齒齦吹氣', teachSound: 'ss' },
+        { symbol: 'z', type: '有聲子音', example: 'zoo', trans: '/zu/', desc: '發音如 s，但震動聲帶', teachSound: 'zz' },
+        { symbol: 'ʃ', type: '無聲子音', example: 'shoe', trans: '/ʃu/', desc: '舌身靠近硬顎吹氣，類似「噓」的聲音', teachSound: 'shh' },
+        { symbol: 'ʒ', type: '有聲子音', example: 'vision', trans: '/ˈvɪʒən/', desc: '發音如 /ʃ/，但震動聲帶', teachSound: 'zhuh' },
+        { symbol: 'tʃ', type: '無聲子音 (破擦音)', example: 'cheese', trans: '/tʃiz/', desc: '舌尖抵住齒齦後方，再放開摩擦出聲', teachSound: 'chuh' },
+        { symbol: 'dʒ', type: '有聲子音 (破擦音)', example: 'jump', trans: '/dʒʌmp/', desc: '發音部位同 /tʃ/，但震動聲帶', teachSound: 'juh' },
+        { symbol: 'm', type: '有聲子音 (鼻音)', example: 'man', trans: '/mæn/', desc: '雙唇緊閉，聲音由鼻腔出來', teachSound: 'mm' },
+        { symbol: 'n', type: '有聲子音 (鼻音)', example: 'now', trans: '/naʊ/', desc: '舌尖抵住上齒齦，聲音由鼻腔出來', teachSound: 'nn' },
+        { symbol: 'ŋ', type: '有聲子音 (鼻音)', example: 'sing', trans: '/sɪŋ/', desc: '舌根抵住軟顎，聲音由鼻腔出來', teachSound: 'ng' },
+        { symbol: 'l', type: '有聲子音', example: 'love', trans: '/lʌv/', desc: '舌尖抵住上齒齦，聲音由舌頭兩側流出', teachSound: 'ull' },
+        { symbol: 'r', type: '有聲子音', example: 'red', trans: '/rɛd/', desc: '舌尖捲起不接觸口腔，嘴唇微圓', teachSound: 'err' },
+        { symbol: 'w', type: '有聲子音', example: 'we', trans: '/wi/', desc: '雙唇向前突出成圓形，舌後部抬高', teachSound: 'wuh' },
+        { symbol: 'j', type: '有聲子音', example: 'yes', trans: '/jɛs/', desc: '舌面抬高靠近硬顎，類似短暫的 /i/ 音', teachSound: 'yuh' },
+        { symbol: 'h', type: '無聲子音', example: 'hat', trans: '/hæt/', desc: '嘴巴微張，輕輕吐氣', teachSound: 'huh' },
+      ]
+    };
+
+    function App() {
+      const [activeTab, setActiveTab] = useState('vowels');
+      const [selectedPhoneme, setSelectedPhoneme] = useState(null);
+      
+      const [customAudio, setCustomAudio] = useState({
+        phonemes: {},
+        words: {}
+      });
+
+      const handleAudioUpload = (event, type, key) => {
+        const file = event.target.files[0];
+        if (file) {
+          const url = URL.createObjectURL(file);
+          setCustomAudio(prev => ({
+            ...prev,
+            [type]: { ...prev[type], [key]: url }
+          }));
+        }
+        event.target.value = '';
+      };
+      
+      const playSynthesis = (text, rate) => {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'en-US';
+          utterance.rate = rate; 
+          window.speechSynthesis.speak(utterance);
+        }
+      };
+
+      const playWordAudio = (word) => {
+        if (customAudio.words[word]) {
+          new Audio(customAudio.words[word]).play();
+        } else {
+          // GitHub Pages 上的音檔路徑
+          const audioPath = `./audio/words/${word}.mp3`;
+          const audio = new Audio(audioPath);
+          audio.play().catch(() => playSynthesis(word, 0.85));
+        }
+      };
+
+      const playPhonemeAudio = (item) => {
+        if (customAudio.phonemes[item.symbol]) {
+          new Audio(customAudio.phonemes[item.symbol]).play();
+        } else {
+          // GitHub Pages 上的音檔路徑
+          const audioPath = `./audio/phonemes/${item.symbol}.mp3`;
+          const audio = new Audio(audioPath);
+          audio.play().catch(() => playSynthesis(item.teachSound || item.symbol, 1.2));
+        }
+      };
+
+      return (
+        <div className="min-h-screen font-sans text-slate-800 selection:bg-indigo-100 pb-12">
+          <header className="bg-white shadow-sm sticky top-0 z-10">
+            <div className="max-w-5xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-indigo-600 flex items-center gap-2">
+                  <Mic2 className="w-8 h-8" />
+                  互動音標學習坊
+                </h1>
+                <p className="text-slate-500 mt-1 text-sm flex items-center gap-1">
+                  <Server className="w-4 h-4" /> 支援讀取靜態資料夾內的自訂 MP3 音檔
+                </p>
+              </div>
+              
+              <div className="flex bg-slate-100 p-1 rounded-xl">
+                <button
+                  onClick={() => setActiveTab('vowels')}
+                  className={`px-6 py-2 rounded-lg font-medium transition-all ${
+                    activeTab === 'vowels' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  母音 Vowels
+                </button>
+                <button
+                  onClick={() => setActiveTab('consonants')}
+                  className={`px-6 py-2 rounded-lg font-medium transition-all ${
+                    activeTab === 'consonants' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  子音 Consonants
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-5xl mx-auto px-4 py-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {phoneticData[activeTab].map((item, index) => {
+                const hasCustom = customAudio.phonemes[item.symbol] || customAudio.words[item.example];
+                return (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedPhoneme(item)}
+                    className={`group relative bg-white p-6 rounded-2xl shadow-sm border transition-all duration-300 flex flex-col items-center justify-center gap-3 hover:-translate-y-1 overflow-hidden
+                      ${hasCustom ? 'border-green-300 hover:border-green-400' : 'border-slate-100 hover:border-indigo-200'} hover:shadow-md`}
+                  >
+                    <span className={`absolute top-2 left-2 text-[10px] px-2 py-1 rounded-full transition-colors
+                      ${hasCustom ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-500'}`}>
+                      {item.type}
+                    </span>
+                    <div className={`text-5xl font-semibold mt-4 transition-colors font-serif
+                      ${hasCustom ? 'text-green-700' : 'text-slate-700 group-hover:text-indigo-600'}`}>
+                      /{item.symbol}/
+                    </div>
+                    <div className="text-sm text-slate-400 group-hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-3 flex items-center gap-1">
+                      <Play className="w-3 h-3" /> {item.example}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedPhoneme && (
+              <div className="mt-12 bg-white rounded-3xl shadow-lg border border-slate-100 p-6 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm flex flex-col gap-1">
+                  <strong className="flex items-center gap-1"><Server className="w-4 h-4"/> 給老師的佈署指南：</strong>
+                  <p>若要讓學生聽到您錄的音檔，請在專案的 <code>audio/phonemes/</code> 資料夾放入 <code>{selectedPhoneme.symbol}.mp3</code>；</p>
+                  <p>在 <code>audio/words/</code> 資料夾放入 <code>{selectedPhoneme.example}.mp3</code>。網站會自動讀取播放！</p>
+                  <p className="text-amber-600/80 mt-1">※ 右側的上傳按鈕僅供「本機試聽」，重整後不會保留給學生。</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                  {/* 左側：音標 */}
+                  <div className="flex flex-col items-center md:items-start p-6 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 relative overflow-hidden">
+                    <div className="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium mb-5">
+                      音標解析 - {selectedPhoneme.type}
+                    </div>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="flex-shrink-0 w-24 h-24 md:w-28 md:h-28 bg-white rounded-full flex items-center justify-center border-4 border-indigo-100 shadow-sm relative">
+                        <span className="text-5xl md:text-6xl font-bold text-indigo-600 font-serif">/{selectedPhoneme.symbol}/</span>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button onClick={() => playPhonemeAudio(selectedPhoneme)} className="w-12 h-12 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-all shadow-md">
+                          <Volume2 className="w-6 h-6" />
+                        </button>
+                        <label className="w-12 h-12 flex items-center justify-center bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 rounded-full transition-all shadow-sm cursor-pointer">
+                          <Upload className="w-5 h-5" />
+                          <input type="file" accept="audio/*" className="hidden" onChange={(e) => handleAudioUpload(e, 'phonemes', selectedPhoneme.symbol)} />
+                        </label>
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2 mt-2">發音訣竅</h3>
+                    <p className="text-slate-600 flex items-start gap-2">
+                      <Info className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" />
+                      {selectedPhoneme.desc}
+                    </p>
+                  </div>
+
+                  {/* 右側：單字 */}
+                  <div className="flex flex-col items-center md:items-start p-6 bg-emerald-50/50 rounded-2xl border border-emerald-100/50 relative overflow-hidden">
+                    <div className="inline-block px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium mb-5">
+                      單字範例
+                    </div>
+                    <div className="flex flex-col md:flex-row items-center gap-6 mb-6 mt-2 md:mt-4 w-full">
+                      <div className="flex flex-col items-center md:items-start flex-1 relative">
+                        <span className="text-4xl md:text-5xl font-bold text-slate-800 tracking-wide mb-2">{selectedPhoneme.example}</span>
+                        <span className="text-xl text-emerald-600 font-serif bg-emerald-100/50 px-3 py-1 rounded-lg">{selectedPhoneme.trans}</span>
+                      </div>
+                      <div className="flex md:flex-col gap-2 flex-shrink-0">
+                        <button onClick={() => playWordAudio(selectedPhoneme.example)} className="w-14 h-14 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-full transition-all shadow-md">
+                          <Volume2 className="w-7 h-7" />
+                        </button>
+                        <label className="w-14 h-14 flex items-center justify-center bg-white text-emerald-600 border border-emerald-200 hover:bg-emerald-50 rounded-full transition-all shadow-sm cursor-pointer">
+                          <Upload className="w-6 h-6" />
+                          <input type="file" accept="audio/*" className="hidden" onChange={(e) => handleAudioUpload(e, 'words', selectedPhoneme.example)} />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    const root = createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
